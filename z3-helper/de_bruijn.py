@@ -9,7 +9,7 @@ def _translate_var_id(var, scope):
     within the quantifier scope 'scope'.
 
     The function assumes scope is a list of nested
-    quantifier scopes, i.e. quantified Z3 formulas.
+    quantifier scopes, i.e., quantified Z3 formulas.
     """
     var_id = z3.get_var_index(var)
     var_name = None
