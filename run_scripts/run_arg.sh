@@ -39,12 +39,21 @@ fi
 # mkdir ${o}
 # cp -r ${solver_dir} ${o}
 # cd "${o}/${solver_dir}"
-cd "${solver_dir}"
-runsolver\
-    --vsize-limit ${mem} -C ${tm} -W ${wtm} -d 10 \
-    -w ${w_file} \
-    2>${log_dir}/${instance_nm}.err \
-    ./run $* ${instance_full} \
-    >${log_dir}/${instance_nm}.sol
+if [[ "${solver_dir}" == vampire* ]]; then
+  runsolver\
+      --vsize-limit ${mem} -C ${tm} -W ${wtm} -d 10 \
+      -w ${w_file} \
+      2>${log_dir}/${instance_nm}.err \
+      ./vampire_race.sh ${solver_dir} ${instance_full} $* \
+      >${log_dir}/${instance_nm}.sol
+else
+  cd "${solver_dir}"
+  runsolver\
+      --vsize-limit ${mem} -C ${tm} -W ${wtm} -d 10 \
+      -w ${w_file} \
+      2>${log_dir}/${instance_nm}.err \
+      ./run $* ${instance_full} \
+      >${log_dir}/${instance_nm}.sol
+fi
 ${w_clean} ${w_file}
 # rm -rf ${o}

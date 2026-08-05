@@ -1,0 +1,3 @@
+#!/bin/bash
+
+vampire  --input_syntax smtlib2  --mode portfolio  --schedule smtcomp  --output_mode smtcomp  --cores 1  -t 300  $*
