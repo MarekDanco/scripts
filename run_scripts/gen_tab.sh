@@ -18,7 +18,7 @@ function get_value { # FILE PATTERN
 }
 
 function detect { # FILE PATTERN REPLACE
-  GRES=`grep -e "${2}" "${1}" | tail -n -1 | sed -e 's|'"${2}"' *|'"${3}"'|'`
+  GRES=`grep -e "^${2}" "${1}" | tail -n -1 | sed -e 's|^'"${2}"' *|'"${3}"'|'`
   if [ -n "${GRES}" ]; then
      echo -n "${GRES}"
   fi
