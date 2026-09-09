@@ -51,7 +51,7 @@ do
 	  continue
   fi
 
-  problem_name=`readlink -f $FF | sed -e 's/\/home\/mikolas\/smt\///'`
+  problem_name=`readlink -f $FF`
   _TIME=`grep -e '^CPU time (s):' ${W_FILE} | tail -n1 | sed -e 's/CPU time (s)://'| sed 's/ //'`
   TIME=`printf "%0.f\n" ${_TIME}`
   _WTIME=`grep -e '^Real time (s):' ${W_FILE} | tail -n1 | sed -e 's/Real time (s)://'| sed 's/ //'`
