@@ -7,23 +7,7 @@
 #
 
 for d in \
-    20220315-MathProblems \
-    20230321-UltimateAutomizerSvcomp2023 \
-    20230328-sqrtmodinv-hoenicke \
-    20250331-elster \
-    AProVE \
-    calypto \
-    CInteger \
-    ConcurrencySafety-Main \
-    ITS \
-    LassoRanker \
-    LCTES \
-    leipzig \
-    mcm \
-    ReachSafety-Loops \
-    SAT14 \
-    UltimateAutomizer \
-    UltimateLassoRanker \
+    test \
     ; do
     ./render_one.sh $d;
 done
