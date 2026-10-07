@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Aggregate SMT solver benchmark stats across all families.
-Usage: solver_stats.py <tables-dir>
+Usage: solver_stats.py <tables-dir> [time-limit-s]
 
 Two layouts are accepted:
   Nested: tables-dir/<family>/<solver>.tab
@@ -9,7 +9,11 @@ Two layouts are accepted:
 
 Line format: path ; time1 time2 (s) m:MEM ; result ...<br>its:N ...
   result: 'n' = not solved, 's sat' = solved sat, 's unsat' = solved unsat
+  'n' is a timeout if time1 or time2 reached the time limit (default 900 s),
+  otherwise unknown (the solver gave up, crashed or ran out of memory)
   its:N  = iteration count (may be absent)
+
+AvgTime is the mean time1 over the solved instances only.
 """
 
 import re
@@ -19,11 +23,12 @@ from pathlib import Path
 from typing import Sequence
 
 RE_ITS = re.compile(r'\bits:(\d+)')
+TIME_LIMIT = 900.0
 
 
-def parse_line(line: str):
+def parse_line(line: str, time_limit: float = TIME_LIMIT):
     """Return (problem_path, time_s, result, its) or None.
-    result: 'sat' | 'unsat' | 'timeout'.  its: int | None."""
+    result: 'sat' | 'unsat' | 'timeout' | 'unknown'.  its: int | None."""
     line = line.strip()
     if not line:
         return None
@@ -33,13 +38,13 @@ def parse_line(line: str):
 
     problem_path = parts[0].strip()
 
-    time = None
+    times = []
     for tok in parts[1].split():
         try:
-            time = float(tok)
-            break
+            times.append(float(tok))
         except ValueError:
             pass
+    time = times[0] if times else None
 
     result_col = parts[2].strip()
     tokens = result_col.split()
@@ -48,7 +53,7 @@ def parse_line(line: str):
 
     result = None
     if tokens[0] == 'n':
-        result = 'timeout'
+        result = 'timeout' if times and max(times) >= time_limit else 'unknown'
     elif tokens[0] == 's' and len(tokens) >= 2:
         if tokens[1] == 'sat':
             result = 'sat'
@@ -69,30 +74,34 @@ def family_from_path(problem_path: str) -> str:
 
 
 def new_stats():
-    return {'sat': 0, 'unsat': 0, 'timeout': 0, 'total': 0,
-            'time': 0.0, 'its_sum': 0, 'its_n': 0}
+    return {'sat': 0, 'unsat': 0, 'timeout': 0, 'unknown': 0, 'total': 0,
+            'time': 0.0, 'time_n': 0, 'its_sum': 0, 'its_n': 0}
 
 
 def collect(tabs: Sequence[tuple[str, str | None, Path]],
-            stats, fstats, solved_by):
+            stats, fstats, solved_by, time_limit: float = TIME_LIMIT):
     for solver, fixed_family, tab in tabs:
         with open(tab, encoding='utf-8', errors='replace') as f:
             for line in f:
-                parsed = parse_line(line)
+                parsed = parse_line(line, time_limit)
                 if parsed is None:
                     continue
                 problem_path, t, result, its = parsed
                 family = fixed_family if fixed_family else family_from_path(problem_path)
                 s = stats[solver]
                 s['total'] += 1
-                if t is not None:
+                if t is not None and result in ('sat', 'unsat'):
                     s['time'] += t
+                    s['time_n'] += 1
                 s[result] += 1
                 if its is not None:
                     s['its_sum'] += its
                     s['its_n'] += 1
                 fs = fstats[family][solver]
                 fs['total'] += 1
+                if t is not None and result in ('sat', 'unsat'):
+                    fs['time'] += t
+                    fs['time_n'] += 1
                 fs[result] += 1
                 if its is not None:
                     fs['its_sum'] += its
@@ -105,9 +114,14 @@ def avg_its_str(s) -> str:
     return f"{s['its_sum'] / s['its_n']:>8.1f}" if s['its_n'] else f"{'n/a':>8}"
 
 
+def avg_time_str(s) -> str:
+    return f"{s['time'] / s['time_n']:>8.1f}s" if s['time_n'] else f"{'n/a':>9}"
+
+
 def print_solver_table(solvers, stats, col):
     hdr = (f"{'Solver':<{col}}  {'Total':>7}  {'Sat':>7}  {'Unsat':>7}"
-           f"  {'Solved':>7}  {'Timeout':>8}  {'%Solved':>8}  {'AvgTime':>9}  {'AvgIts':>8}")
+           f"  {'Solved':>7}  {'Unknown':>8}  {'Timeout':>8}  {'%Solved':>8}"
+           f"  {'AvgTime':>9}  {'AvgIts':>8}")
     print(hdr)
     print('-' * len(hdr))
     for solver in solvers:
@@ -115,15 +129,15 @@ def print_solver_table(solvers, stats, col):
         total   = s['total']
         solved  = s['sat'] + s['unsat']
         pct     = 100 * solved / total if total else 0.0
-        avg_t   = s['time'] / total if total else 0.0
         print(f"{solver:<{col}}  {total:>7}  {s['sat']:>7}  {s['unsat']:>7}"
-              f"  {solved:>7}  {s['timeout']:>8}  {pct:>7.1f}%  {avg_t:>8.1f}s"
-              f"  {avg_its_str(s)}")
+              f"  {solved:>7}  {s['unknown']:>8}  {s['timeout']:>8}  {pct:>7.1f}%"
+              f"  {avg_time_str(s)}  {avg_its_str(s)}")
 
 
 def print_family_table(family_solvers, fs, col):
     hdr = (f"  {'Solver':<{col}}  {'Total':>7}  {'Sat':>7}  {'Unsat':>7}"
-           f"  {'Solved':>7}  {'%Solved':>8}  {'AvgIts':>8}")
+           f"  {'Solved':>7}  {'Unknown':>8}  {'Timeout':>8}  {'%Solved':>8}"
+           f"  {'AvgTime':>9}  {'AvgIts':>8}")
     print(hdr)
     print('  ' + '-' * (len(hdr) - 2))
     for solver in family_solvers:
@@ -132,13 +146,15 @@ def print_family_table(family_solvers, fs, col):
         solved = s['sat'] + s['unsat']
         pct    = 100 * solved / total if total else 0.0
         print(f"  {solver:<{col}}  {total:>7}  {s['sat']:>7}  {s['unsat']:>7}"
-              f"  {solved:>7}  {pct:>7.1f}%  {avg_its_str(s)}")
+              f"  {solved:>7}  {s['unknown']:>8}  {s['timeout']:>8}  {pct:>7.1f}%"
+              f"  {avg_time_str(s)}  {avg_its_str(s)}")
 
 
 def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <tables-dir>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print(f"Usage: {sys.argv[0]} <tables-dir> [time-limit-s]", file=sys.stderr)
         sys.exit(1)
+    time_limit = float(sys.argv[2]) if len(sys.argv) == 3 else TIME_LIMIT
     root = Path(sys.argv[1])
     if not root.is_dir():
         print(f"Directory not found: {root}", file=sys.stderr)
@@ -167,7 +183,7 @@ def main():
     fstats   = defaultdict(lambda: defaultdict(new_stats))
     solved_by: dict[str, set] = defaultdict(set)
 
-    collect(tabs, stats, fstats, solved_by)
+    collect(tabs, stats, fstats, solved_by, time_limit)
 
     if not stats:
         print("No data found.", file=sys.stderr)
