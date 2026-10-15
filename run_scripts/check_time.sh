@@ -7,9 +7,17 @@
 cd "$(dirname "$0")" || exit 1
 source run_setting
 
-# Keep in sync with run_all.sh.
-bench_dir=test
-solvers=(vampire)
+# Take the instances and solvers from run_all.sh's
+# "find ... | parallel ... ::: <solvers>" line (joining "\" continuations).
+cmd=$(sed -e ':a' -e '/\\$/{N;s/\\\n//;ba}' run_all.sh \
+    | grep -m1 '^ *find .*| *parallel .*::: ')
+find_cmd=${cmd%%|*}
+solver_part=${cmd##*:::}
+read -ra solvers <<< "${solver_part%%[;&|]*}"
+if (( ${#solvers[@]} == 0 )); then
+    echo "no 'find ... | parallel ... ::: <solvers>' line in run_all.sh"
+    exit 1
+fi
 
 # Match "/bin/bash ./run_all.sh" but not e.g. "nvim run_all.sh".
 pid=$(pgrep -o -f '^[^ ]*sh [^ ]*run_all\.sh( |$)')
@@ -27,10 +35,10 @@ while IFS= read -r inst; do
     for s in "${solvers[@]}"; do
         w_files+=("logs/${inst%/*}_${tm}_${mem}_${s}/${inst##*/}.w")
     done
-done < <(find "${bench_dir}" -name "*.smt2")
+done < <(eval "${find_cmd}")
 total=${#w_files[@]}
 if (( total == 0 )); then
-    echo "no instances in ${bench_dir}"
+    echo "no instances found by: ${find_cmd}"
     exit 1
 fi
 
