@@ -76,7 +76,7 @@ elif (( done_run == 0 )); then
 else
     left=$(( remaining * elapsed / done_run ))
     echo "this run: ${done_run} finished in $(hms "$elapsed")," \
-        "$(hms $(( elapsed / done_run ))) per instance on average"
+        "one finished every $(hms $(( elapsed / done_run ))) on average"
     echo "estimated time left: $(hms "$left")" \
         "(done around $(date -d "@$(( $(date +%s) + left ))" '+%a %H:%M'))"
 fi
