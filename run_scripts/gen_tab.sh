@@ -72,19 +72,9 @@ do
     echo >&2 '+ strange exit code: ' ${F}
   fi
   echo -n "$problem_name  ; ${TIME} ${WTIME} (s) ${mem}; ${ANSWER} "
-  detect ${SOLUTION_FILE} "terminated in:" "trm:"
-  echo -n '<br>'
-  detect ${SOLUTION_FILE} "longest phase:" "lph:"
-  echo -n '<br>'
-  detect ${SOLUTION_FILE} "iteration:" "its:"
+  detect ${SOLUTION_FILE} "iteration:" "it:"
   echo -n ' '
-  detect ${SOLUTION_FILE} "pures:" "prs:"
-  echo -n ' '
-  detect ${SOLUTION_FILE} "mul_axioms:" "*:"
-  echo -n ' '
-  detect ${SOLUTION_FILE} "div_axioms:" "/:"
-  echo -n ' '
-  detect ${SOLUTION_FILE} "mod_axioms:" "%:"
+  detect ${SOLUTION_FILE} "backtracks:" "bt:"
   echo ''
 done
 echo >&2 '+' missing: ${not_done}
