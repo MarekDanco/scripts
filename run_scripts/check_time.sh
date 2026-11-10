@@ -13,7 +13,10 @@ cmd=$(sed -e ':a' -e '/\\$/{N;s/\\\n//;ba}' run_all.sh \
     | grep -m1 '^ *find .*| *parallel .*::: ')
 find_cmd=${cmd%%|*}
 solver_part=${cmd##*:::}
-read -ra solvers <<< "${solver_part%%[;&|]*}"
+# The solver list may use variables that run_all.sh sets (COMMON="...", N2L2="..."),
+# so set them here too and let bash expand the list.
+eval "$(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' run_all.sh)"
+eval "solvers=(${solver_part%%[;&|]*})"
 if (( ${#solvers[@]} == 0 )); then
     echo "no 'find ... | parallel ... ::: <solvers>' line in run_all.sh"
     exit 1
